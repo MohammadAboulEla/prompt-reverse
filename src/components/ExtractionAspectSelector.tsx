@@ -214,7 +214,8 @@ export const ExtractionAspectSelector: React.FC<ExtractionAspectSelectorProps> =
             type="button"
             onClick={onExtract}
             disabled={disabled || isLoading}
-            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 px-3.5 py-1.5 text-xs font-bold text-neutral-950 shadow-md shadow-amber-500/10 hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 transition-all"
+            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 px-3.5 py-1.5 text-xs font-bold shadow-md shadow-amber-500/10 hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 transition-all"
+            style={{ color: 'var(--theme-accent-contrast, #0a0a0a)' }}
           >
             {isLoading ? (
               <>
@@ -223,7 +224,7 @@ export const ExtractionAspectSelector: React.FC<ExtractionAspectSelectorProps> =
               </>
             ) : (
               <>
-                <Sparkles className="h-3.5 w-3.5 fill-neutral-950" />
+                <Sparkles className="h-3.5 w-3.5 fill-current" />
                 <span>Extract Prompt</span>
                 <ArrowRight className="h-3 w-3" />
               </>

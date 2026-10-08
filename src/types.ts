@@ -101,3 +101,14 @@ export interface UserSettings {
   apiKey: string;
   model: string;
 }
+
+export type {
+  ThemeMode,
+  DarkVariant,
+  LightVariant,
+  AccentColor,
+  ThemeConfig,
+  DarkVariantOption,
+  LightVariantOption,
+  AccentColorOption,
+} from './utils/theme';

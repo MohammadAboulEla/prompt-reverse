@@ -273,7 +273,8 @@ export const PromptResultViewer: React.FC<PromptResultViewerProps> = ({
                 type="button"
                 onClick={handleInjectSubject}
                 disabled={isInjecting || !injectedSubjectInput.trim()}
-                className="flex items-center justify-center gap-1 rounded-md bg-amber-400 px-3 py-1.5 text-xs font-bold text-neutral-950 hover:bg-amber-300 active:scale-95 disabled:opacity-40 transition-all shrink-0"
+                className="flex items-center justify-center gap-1 rounded-md bg-amber-400 px-3 py-1.5 text-xs font-bold hover:brightness-110 active:scale-95 disabled:opacity-40 transition-all shrink-0"
+                style={{ color: 'var(--theme-accent-contrast, #0a0a0a)' }}
               >
                 <span>{isInjecting ? 'Swapping Subject...' : 'Inject & Generate 1:1'}</span>
               </button>
@@ -343,7 +344,8 @@ export const PromptResultViewer: React.FC<PromptResultViewerProps> = ({
         <button
           type="button"
           onClick={() => handleCopy(currentPrompt, `${TABS.find((t) => t.id === activeTab)?.label}`)}
-          className="flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-neutral-950 hover:bg-amber-300 active:scale-95 transition-all shadow-sm"
+          className="flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold hover:brightness-110 active:scale-95 transition-all shadow-sm"
+          style={{ color: 'var(--theme-accent-contrast, #0a0a0a)' }}
         >
           {copiedKey === activeTab ? (
             <>

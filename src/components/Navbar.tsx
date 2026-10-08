@@ -1,5 +1,16 @@
 import React from 'react';
-import { Sparkles, History, Image as ImageIcon, RotateCcw, HelpCircle, Settings } from 'lucide-react';
+import {
+  Sparkles,
+  History,
+  Image as ImageIcon,
+  RotateCcw,
+  HelpCircle,
+  Settings,
+  Sun,
+  Moon,
+  Palette,
+} from 'lucide-react';
+import { ThemeConfig, ACCENT_COLORS } from '../utils/theme';
 
 interface NavbarProps {
   onOpenHistory: () => void;
@@ -8,8 +19,10 @@ interface NavbarProps {
   hasActiveImage: boolean;
   onOpenSampleGallery: () => void;
   onOpenSuggestions: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (tab?: 'theme' | 'model') => void;
   isCustomSettingsActive: boolean;
+  themeConfig: ThemeConfig;
+  onToggleThemeMode: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -21,14 +34,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSuggestions,
   onOpenSettings,
   isCustomSettingsActive,
+  themeConfig,
+  onToggleThemeMode,
 }) => {
+  const currentAccent =
+    ACCENT_COLORS.find((a) => a.id === themeConfig.accent) || ACCENT_COLORS[0];
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-800/80 bg-neutral-950/90 backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-3 sm:px-5">
         {/* Brand */}
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-amber-700 shadow-sm ring-1 ring-amber-400/30">
-            <Sparkles className="h-3.5 w-3.5 text-neutral-950" />
+          <div
+            className="flex h-7 w-7 items-center justify-center rounded-lg shadow-sm ring-1 ring-amber-400/30 transition-colors"
+            style={{ backgroundColor: currentAccent.hex }}
+          >
+            <Sparkles
+              className="h-3.5 w-3.5"
+              style={{ color: currentAccent.contrastText }}
+            />
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-bold tracking-tight text-white">
@@ -42,6 +66,40 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* 1-Click Dark/Light Mode Quick Switcher */}
+          <button
+            onClick={onToggleThemeMode}
+            className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-800 bg-neutral-900/70 text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+            title={
+              themeConfig.mode === 'dark'
+                ? `Current: Dark (${themeConfig.darkVariant}) · Click for Light`
+                : `Current: Light (${themeConfig.lightVariant}) · Click for Dark`
+            }
+            aria-label="Toggle dark/light theme"
+          >
+            {themeConfig.mode === 'dark' ? (
+              <Sun className="h-3.5 w-3.5 text-amber-400 transition-transform hover:rotate-45" />
+            ) : (
+              <Moon className="h-3.5 w-3.5 text-amber-400 transition-transform hover:-rotate-12" />
+            )}
+          </button>
+
+          {/* Direct Theme Palette modal trigger */}
+          <button
+            onClick={() => onOpenSettings('theme')}
+            className="flex items-center gap-1.5 rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-1 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800 hover:text-white transition-colors"
+            title="Configure Theme, Accent & Background Degrees"
+          >
+            <span
+              className="h-2 w-2 rounded-full ring-1 ring-black/40"
+              style={{ backgroundColor: currentAccent.hex }}
+            />
+            <Palette className="h-3.5 w-3.5 text-neutral-400" />
+            <span className="hidden lg:inline text-[10px] capitalize">
+              {themeConfig.mode === 'dark' ? themeConfig.darkVariant : themeConfig.lightVariant}
+            </span>
+          </button>
+
           <button
             onClick={onOpenSuggestions}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
@@ -73,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
-            onClick={onOpenSettings}
+            onClick={() => onOpenSettings('model')}
             className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
               isCustomSettingsActive
                 ? 'border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'

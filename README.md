@@ -36,6 +36,12 @@
   - **Camera Specifications**: Estimated lens (e.g., 85mm f/1.4, 24mm wide angle), sensor, angle, and framing.
   - **Tactile Textures & Atmospheric Particles**: Airborne dust, rain reflections, subsurface scattering, material finishes.
   - **Negative Prompt Shield**: Prevent unwanted generator artifacts (distortion, low-res, extra limbs).
+- **Comprehensive Theme & Appearance Settings**:
+  - **Light & Dark Mode**: One-click instant switcher in the header and full settings dialog.
+  - **8 Vibrant Accent Colors**: Amber Gold, Emerald Mint, Electric Cyan, Royal Violet, Rose Fuchsia, Flame Coral, Sapphire Blue, and Monochrome Slate.
+  - **Dark Theme Degrees (Background Depth)**: 5 tailored dark degrees including OLED Pitch Black (pure 0% true black for OLED displays), Obsidian Zinc (default deep slate), Midnight Navy (twilight deep cool), Espresso Stone (warm coffee charcoal), and Charcoal Graphite (soft dark).
+  - **Light Theme Degrees (Background Tone)**: 5 tailored light degrees including Pure Snow (crisp 100% white), Soft Alabaster (warm ivory paper), Cool Slate (silver technical gray), Warm Sand (natural linen paper), and Minimal Zinc (modern gray).
+  - **Live Real-time Preview & Instant Persistence**: All theme selections apply immediately and persist in browser `localStorage`.
 - **Custom Model & API Key Settings**:
   - In-app **Settings Modal** accessible from the header and footer.
   - Configure any Gemini model (default: `gemini-3.5-flash-lite`, with quick buttons for `gemini-3.8-flash`, etc.).

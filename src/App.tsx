@@ -27,6 +27,13 @@ import {
   resizeImageToTargetSize,
   formatBytes,
 } from './utils/imageUtils';
+import {
+  ThemeConfig,
+  applyTheme,
+  loadSavedTheme,
+  saveTheme,
+  ACCENT_COLORS,
+} from './utils/theme';
 
 const STORAGE_KEY = 'reverse_prompt_history_v1';
 const SETTINGS_STORAGE_KEY = 'reverse_prompt_user_settings_v1';
@@ -49,6 +56,13 @@ export default function App() {
 
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Theme state (persisted locally)
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig>(() => {
+    const loaded = loadSavedTheme();
+    applyTheme(loaded);
+    return loaded;
+  });
 
   // User Settings state (persisted locally)
   const [settings, setSettings] = useState<UserSettings>(() => {
@@ -75,6 +89,7 @@ export default function App() {
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
   const [isSampleGalleryOpen, setIsSampleGalleryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'theme' | 'model'>('theme');
 
   // Toast notifications
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -233,6 +248,27 @@ export default function App() {
     );
   };
 
+  const handleToggleThemeMode = useCallback(() => {
+    setThemeConfig((prev) => {
+      const nextMode = prev.mode === 'dark' ? 'light' : 'dark';
+      const nextConfig: ThemeConfig = { ...prev, mode: nextMode };
+      applyTheme(nextConfig);
+      saveTheme(nextConfig);
+      addToast(`Switched to ${nextMode === 'dark' ? 'Dark' : 'Light'} theme`, 'info');
+      return nextConfig;
+    });
+  }, [addToast]);
+
+  const handleSaveTheme = useCallback(
+    (newTheme: ThemeConfig) => {
+      setThemeConfig(newTheme);
+      applyTheme(newTheme);
+      saveTheme(newTheme);
+      addToast('Theme preferences saved', 'success');
+    },
+    [addToast]
+  );
+
   const handleExtractPrompt = async () => {
     if (!currentImageData) {
       addToast('Please upload or select an image first', 'error');
@@ -350,8 +386,13 @@ export default function App() {
         hasActiveImage={!!currentImageData || !!result}
         onOpenSampleGallery={() => setIsSampleGalleryOpen(true)}
         onOpenSuggestions={() => setIsSuggestionsOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={(tab) => {
+          setSettingsTab(tab || 'theme');
+          setIsSettingsOpen(true);
+        }}
         isCustomSettingsActive={!!settings.apiKey || settings.model !== 'gemini-3.5-flash-lite'}
+        themeConfig={themeConfig}
+        onToggleThemeMode={handleToggleThemeMode}
       />
 
       {/* Main Container */}
@@ -362,7 +403,7 @@ export default function App() {
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-400" />
               <span className="font-semibold text-white">ReversePrompt Studio</span>
-              <span className="text-neutral-400 hidden sm:inline">· Deconstruct any image into exact Midjourney, Flux & DALL-E prompts</span>
+              <span className="text-neutral-400 hidden sm:inline">· Deconstruct any image into exact prompts</span>
             </div>
             <button
               onClick={() => setIsSuggestionsOpen(true)}
@@ -452,14 +493,42 @@ export default function App() {
       {/* Ultra Compact Footer */}
       <footer className="w-full border-t border-neutral-800/80 bg-neutral-950/80 py-2.5 text-[11px] text-neutral-500">
         <div className="max-w-7xl mx-auto px-3 sm:px-5 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-medium text-neutral-400">ReversePrompt.ai</span>
             <span>·</span>
-            <span>Multimodal Vision ({settings.model})</span>
+            <button
+              onClick={() => {
+                setSettingsTab('theme');
+                setIsSettingsOpen(true);
+              }}
+              className="hover:text-amber-400 transition-colors flex items-center gap-1 text-[10px]"
+              title="Change theme mode, background degree & accent color"
+            >
+              <span className="capitalize">{themeConfig.mode}</span>
+              <span className="text-neutral-500">
+                ({themeConfig.mode === 'dark' ? themeConfig.darkVariant : themeConfig.lightVariant})
+              </span>
+              <span>·</span>
+              <span className="capitalize">{themeConfig.accent}</span>
+            </button>
+            <span>·</span>
+            <span className="text-[10px] hidden sm:inline">{settings.model}</span>
           </div>
           <div className="flex items-center gap-3 text-neutral-400">
             <button
-              onClick={() => setIsSettingsOpen(true)}
+              onClick={() => {
+                setSettingsTab('theme');
+                setIsSettingsOpen(true);
+              }}
+              className="hover:text-amber-400 transition-colors"
+            >
+              Theme
+            </button>
+            <button
+              onClick={() => {
+                setSettingsTab('model');
+                setIsSettingsOpen(true);
+              }}
               className="hover:text-amber-400 transition-colors"
             >
               Settings
@@ -514,7 +583,10 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onSave={handleSaveSettings}
+        onSaveSettings={handleSaveSettings}
+        themeConfig={themeConfig}
+        onSaveTheme={handleSaveTheme}
+        initialTab={settingsTab}
       />
 
       {/* Toast notifications */}

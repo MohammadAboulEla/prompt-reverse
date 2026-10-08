@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
+  :root {
+    color-scheme: dark;
+  }
+
+  [data-theme="light"] {
+    color-scheme: light;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--color-neutral-950, #09090b);
+    color: var(--color-neutral-100, #f4f4f5);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
 
   code, pre, .font-mono {
@@ -25,14 +38,24 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(23, 23, 23, 0.5);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(64, 64, 64, 0.6);
+  background: var(--color-neutral-700, rgba(64, 64, 64, 0.6));
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(115, 115, 115, 0.8);
+  background: var(--color-neutral-500, rgba(115, 115, 115, 0.8));
+}
+
+/* Light mode modal backdrop adjustments */
+[data-theme="light"] .bg-black\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* Theme accent glow helper */
+.theme-accent-glow {
+  box-shadow: 0 0 20px var(--theme-accent-glow, rgba(251, 191, 36, 0.25));
 }

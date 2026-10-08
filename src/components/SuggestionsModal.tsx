@@ -239,7 +239,8 @@ export const SuggestionsModal: React.FC<SuggestionsModalProps> = ({
               onSelectExtractionMode('all');
               onClose();
             }}
-            className="rounded-lg bg-amber-400 px-4 py-1.5 text-xs font-bold text-neutral-950 hover:bg-amber-300 transition-colors"
+            className="rounded-lg bg-amber-400 px-4 py-1.5 text-xs font-bold hover:brightness-110 transition-colors"
+            style={{ color: 'var(--theme-accent-contrast, #0a0a0a)' }}
           >
             Extract All Dimensions
           </button>
