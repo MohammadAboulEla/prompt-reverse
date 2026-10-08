@@ -1,0 +1,6 @@
+{
+  "name": "ReversePrompt AI - Image Prompt Extractor",
+  "description": "Upload any image to extract exact reproduction prompts, art styles, subjects, color palettes, lighting, camera specs, and engine-optimized prompts for Midjourney, Flux, and DALL-E.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
