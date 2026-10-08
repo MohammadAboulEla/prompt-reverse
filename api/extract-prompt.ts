@@ -1,25 +1,9 @@
-import express from 'express';
 import { GoogleGenAI, Type } from '@google/genai';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-
-// High limit for base64 images
-app.use(express.json({ limit: '35mb' }));
-app.use(express.urlencoded({ extended: true, limit: '35mb' }));
 
 function getGeminiClient(customKey?: string) {
   const key = customKey || process.env.GEMINI_API_KEY;
   if (!key) {
-    throw new Error('No Gemini API key provided. Please configure GEMINI_API_KEY or provide your key in Settings.');
+    throw new Error('No Gemini API key provided. Please configure GEMINI_API_KEY in Vercel environment variables or provide your key in Settings.');
   }
   return new GoogleGenAI({
     apiKey: key,
@@ -29,14 +13,6 @@ function getGeminiClient(customKey?: string) {
       },
     },
   });
-}
-
-export interface ExtractionRequest {
-  image: string; // base64 without data:image/... prefix or with prefix
-  mimeType: string;
-  mode?: string; // 'all' | 'exact' | 'style' | 'subject' | 'colors' | 'camera' | 'mood' | 'custom';
-  customFocus?: string;
-  aspects?: string[];
 }
 
 const EXTRACTION_SCHEMA = {
@@ -210,14 +186,26 @@ const EXTRACTION_SCHEMA = {
   ],
 };
 
-// Health check route
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'reverse-prompt-ai', timestamp: new Date().toISOString() });
-});
+export default async function handler(req: any, res: any) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-gemini-api-key, x-gemini-model'
+  );
 
-// API Route for prompt extraction
-app.post('/api/extract-prompt', async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+  }
+
   try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const {
       image,
       mimeType = 'image/jpeg',
@@ -227,7 +215,7 @@ app.post('/api/extract-prompt', async (req, res) => {
       injectedSubject = '',
       apiKey: customApiKey,
       model: customModel,
-    } = req.body;
+    } = body;
 
     if (!image) {
       return res.status(400).json({ error: 'No image data provided' });
@@ -237,7 +225,6 @@ app.post('/api/extract-prompt', async (req, res) => {
     const targetModel = (req.headers['x-gemini-model'] as string) || customModel || 'gemini-3.5-flash-lite';
     const ai = getGeminiClient(apiKey);
 
-    // Clean base64 data if it contains a data URL prefix
     let cleanBase64 = image;
     let detectedMime = mimeType;
     if (image.startsWith('data:')) {
@@ -282,7 +269,7 @@ ${aspects && aspects.length > 0 ? `The user is specifically interested in: ${asp
     let response;
     try {
       response = await ai.models.generateContent({
-        model: targetModel, //  DO NOT change the model
+        model: targetModel,
         contents: {
           parts: [
             {
@@ -300,7 +287,7 @@ ${aspects && aspects.length > 0 ? `The user is specifically interested in: ${asp
           systemInstruction,
           responseMimeType: 'application/json',
           responseSchema: EXTRACTION_SCHEMA,
-          temperature: 0.2, // Low temperature for high precision and consistent forensic details
+          temperature: 0.2,
         },
       });
     } catch (modelErr: any) {
@@ -335,7 +322,7 @@ ${aspects && aspects.length > 0 ? `The user is specifically interested in: ${asp
     }
 
     const parsedData = JSON.parse(responseText);
-    return res.json(parsedData);
+    return res.status(200).json(parsedData);
   } catch (error: any) {
     console.error('Error during prompt extraction:', error);
     return res.status(500).json({
@@ -343,129 +330,4 @@ ${aspects && aspects.length > 0 ? `The user is specifically interested in: ${asp
       details: error?.toString(),
     });
   }
-});
-
-// Dedicated API route for instant subject replacement / injection on existing prompt
-app.post('/api/inject-subject', async (req, res) => {
-  try {
-    const {
-      exactPrompt,
-      originalSubject = '',
-      newSubject,
-      style = '',
-      lighting = '',
-      aspectRatio = '16:9',
-      apiKey: customApiKey,
-      model: customModel,
-    } = req.body;
-
-    if (!newSubject) {
-      return res.status(400).json({ error: 'No new subject provided' });
-    }
-    if (!exactPrompt) {
-      return res.status(400).json({ error: 'No base prompt provided' });
-    }
-
-    const apiKey = (req.headers['x-gemini-api-key'] as string) || customApiKey;
-    const targetModel = (req.headers['x-gemini-model'] as string) || customModel || 'gemini-3.5-flash-lite';
-    const ai = getGeminiClient(apiKey);
-
-    const systemInstruction = `You are a world-class prompt engineer specializing in prompt subject swaps and replacement synthesis.
-Given an existing exact 1:1 image prompt:
-1. Replace the original subject with the newly injected subject: "${newSubject}".
-2. Keep 100% of the surrounding environment, background, camera framing, focal length, depth of field, lighting physics, color temperature, and artistic medium/style intact.
-3. Adapt the new subject naturally into the existing lighting, shadows, and environment.
-Return a structured JSON with the swapped prompt.`;
-
-    const promptText = `Original Prompt: "${exactPrompt}"
-Original Subject: "${originalSubject}"
-New Injected Subject: "${newSubject}"
-Style cues: "${style}"
-Lighting cues: "${lighting}"
-Aspect Ratio: "${aspectRatio}"
-
-Rewrite this prompt replacing ONLY the subject with "${newSubject}". Return the updated prompt for all engines.`;
-
-    const schema = {
-      type: Type.OBJECT,
-      properties: {
-        injectedPrompt: {
-          type: Type.STRING,
-          description: 'The master 1:1 prompt with the new injected subject replacing the original subject.',
-        },
-        midjourneyPrompt: {
-          type: Type.STRING,
-          description: `Midjourney v6.1 syntax with injected subject and --ar ${aspectRatio} --v 6.1 --style raw.`,
-        },
-        fluxPrompt: {
-          type: Type.STRING,
-          description: 'Flux.1 / SDXL syntax with injected subject and descriptive tags.',
-        },
-        dallePrompt: {
-          type: Type.STRING,
-          description: 'DALL-E 3 natural prose narrative with injected subject.',
-        },
-      },
-      required: ['injectedPrompt', 'midjourneyPrompt', 'fluxPrompt', 'dallePrompt'],
-    };
-
-    let response;
-    try {
-      response = await ai.models.generateContent({
-        model: targetModel, //  DO NOT change the model
-        contents: promptText,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.2,
-        },
-      });
-    } catch (e: any) {
-      console.warn(`Primary model failed for injection (${targetModel}), falling back to gemini-3.8-flash:`, e?.message);
-      response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: promptText,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.2,
-        },
-      });
-    }
-
-    const responseText = response.text;
-    if (!responseText) throw new Error('Empty response from model');
-    return res.json(JSON.parse(responseText));
-  } catch (err: any) {
-    console.error('Error injecting subject:', err);
-    return res.status(500).json({ error: err.message || 'Failed to inject subject' });
-  }
-});
-
-// Production or Vite middleware development server
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer } = await import('vite');
-    const vite = await createServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist/index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ReversePrompt AI server running at http://0.0.0.0:${PORT}`);
-  });
 }
-
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});

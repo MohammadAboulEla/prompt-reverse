@@ -103,6 +103,19 @@ npm run build
 npm start
 ```
 
+### Deploying to Vercel
+
+The repository is configured for 1-click deployment on Vercel:
+
+1. **Import the repository** in your Vercel Dashboard (`github.com/MohammadAboulEla/prompt-reverse`).
+2. **Environment Variables**: Add `GEMINI_API_KEY` in the Vercel Project Settings (*Settings > Environment Variables*). Note: Users can also enter their own Gemini API key directly in the web app's **Settings** modal.
+3. **Build Settings**:
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. The included `vercel.json` and `/api` serverless functions (`/api/extract-prompt`, `/api/inject-subject`, `/api/health`) handle the backend automatically.
+5. The included `.npmrc` (`legacy-peer-deps=true`) ensures clean, conflict-free dependency installation on Vercel build runners.
+
 ---
 
 ## 📖 How to Use
