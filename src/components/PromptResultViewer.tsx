@@ -15,12 +15,13 @@ import {
   FileText,
   Plus,
 } from 'lucide-react';
-import { ExtractionResult } from '../types';
+import { ExtractionResult, UserSettings } from '../types';
 
 interface PromptResultViewerProps {
   result: ExtractionResult;
   onCopyText: (text: string, label: string) => void;
   activeFocus?: string;
+  userSettings?: UserSettings;
 }
 
 type TabKey =
@@ -70,6 +71,7 @@ export const PromptResultViewer: React.FC<PromptResultViewerProps> = ({
   result,
   onCopyText,
   activeFocus,
+  userSettings,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('exact');
   const [editedPrompts, setEditedPrompts] = useState<Record<string, string>>({});
@@ -216,6 +218,8 @@ export const PromptResultViewer: React.FC<PromptResultViewerProps> = ({
           style: result.breakdown?.style?.medium || '',
           lighting: result.breakdown?.lighting?.type || '',
           aspectRatio: selectedAR,
+          apiKey: userSettings?.apiKey || '',
+          model: userSettings?.model || 'gemini-3.5-flash-lite',
         }),
       });
 

@@ -96,3 +96,8 @@ export interface SamplePreset {
   description: string;
   url: string;
 }
+
+export interface UserSettings {
+  apiKey: string;
+  model: string;
+}

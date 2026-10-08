@@ -16,14 +16,20 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 app.use(express.json({ limit: '35mb' }));
 app.use(express.urlencoded({ extended: true, limit: '35mb' }));
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+function getGeminiClient(customKey?: string) {
+  const key = customKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error('No Gemini API key provided. Please configure GEMINI_API_KEY or provide your key in Settings.');
+  }
+  return new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
     },
-  },
-});
+  });
+}
 
 export interface ExtractionRequest {
   image: string; // base64 without data:image/... prefix or with prefix
@@ -207,15 +213,24 @@ const EXTRACTION_SCHEMA = {
 // API Route for prompt extraction
 app.post('/api/extract-prompt', async (req, res) => {
   try {
-    const { image, mimeType = 'image/jpeg', mode = 'all', customFocus = '', aspects = [], injectedSubject = '' } = req.body;
+    const {
+      image,
+      mimeType = 'image/jpeg',
+      mode = 'all',
+      customFocus = '',
+      aspects = [],
+      injectedSubject = '',
+      apiKey: customApiKey,
+      model: customModel,
+    } = req.body;
 
     if (!image) {
       return res.status(400).json({ error: 'No image data provided' });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server' });
-    }
+    const apiKey = (req.headers['x-gemini-api-key'] as string) || customApiKey;
+    const targetModel = (req.headers['x-gemini-model'] as string) || customModel || 'gemini-3.5-flash-lite';
+    const ai = getGeminiClient(apiKey);
 
     // Clean base64 data if it contains a data URL prefix
     let cleanBase64 = image;
@@ -262,7 +277,7 @@ ${aspects && aspects.length > 0 ? `The user is specifically interested in: ${asp
     let response;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash-lite', //  DO NOT change the model
+        model: targetModel, //  DO NOT change the model
         contents: {
           parts: [
             {
@@ -284,7 +299,7 @@ ${aspects && aspects.length > 0 ? `The user is specifically interested in: ${asp
         },
       });
     } catch (modelErr: any) {
-      console.warn('Primary model call failed, falling back to gemini-3.8-flash:', modelErr?.message);
+      console.warn(`Primary model call (${targetModel}) failed, falling back to gemini-3.8-flash:`, modelErr?.message);
       response = await ai.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: {
@@ -335,6 +350,8 @@ app.post('/api/inject-subject', async (req, res) => {
       style = '',
       lighting = '',
       aspectRatio = '16:9',
+      apiKey: customApiKey,
+      model: customModel,
     } = req.body;
 
     if (!newSubject) {
@@ -344,9 +361,9 @@ app.post('/api/inject-subject', async (req, res) => {
       return res.status(400).json({ error: 'No base prompt provided' });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server' });
-    }
+    const apiKey = (req.headers['x-gemini-api-key'] as string) || customApiKey;
+    const targetModel = (req.headers['x-gemini-model'] as string) || customModel || 'gemini-3.5-flash-lite';
+    const ai = getGeminiClient(apiKey);
 
     const systemInstruction = `You are a world-class prompt engineer specializing in prompt subject swaps and replacement synthesis.
 Given an existing exact 1:1 image prompt:
@@ -390,7 +407,7 @@ Rewrite this prompt replacing ONLY the subject with "${newSubject}". Return the 
     let response;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash-lite', //  DO NOT change the model
+        model: targetModel, //  DO NOT change the model
         contents: promptText,
         config: {
           systemInstruction,
@@ -400,7 +417,7 @@ Rewrite this prompt replacing ONLY the subject with "${newSubject}". Return the 
         },
       });
     } catch (e: any) {
-      console.warn('Primary model failed for injection, falling back to gemini-3.8-flash:', e?.message);
+      console.warn(`Primary model failed for injection (${targetModel}), falling back to gemini-3.8-flash:`, e?.message);
       response = await ai.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: promptText,

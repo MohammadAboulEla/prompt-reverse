@@ -16,8 +16,9 @@ import { ForensicBreakdown } from './components/ForensicBreakdown';
 import { HistoryModal } from './components/HistoryModal';
 import { SuggestionsModal } from './components/SuggestionsModal';
 import { SampleGalleryModal } from './components/SampleGalleryModal';
+import { SettingsModal } from './components/SettingsModal';
 import { Toast, ToastMessage } from './components/Toast';
-import { ExtractionResult, HistoryItem, SamplePreset } from './types';
+import { ExtractionResult, HistoryItem, SamplePreset, UserSettings } from './types';
 import { AVAILABLE_EXTRACTION_ASPECTS, SAMPLE_PRESETS } from './data/sampleImages';
 import {
   createThumbnail,
@@ -28,6 +29,7 @@ import {
 } from './utils/imageUtils';
 
 const STORAGE_KEY = 'reverse_prompt_history_v1';
+const SETTINGS_STORAGE_KEY = 'reverse_prompt_user_settings_v1';
 
 export default function App() {
   const [currentImageData, setCurrentImageData] = useState<string | null>(null);
@@ -48,10 +50,31 @@ export default function App() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
+  // User Settings state (persisted locally)
+  const [settings, setSettings] = useState<UserSettings>(() => {
+    try {
+      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          model: parsed.model || 'gemini-3.5-flash-lite',
+          apiKey: parsed.apiKey || '',
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to load user settings from localStorage', e);
+    }
+    return {
+      model: 'gemini-3.5-flash-lite',
+      apiKey: '',
+    };
+  });
+
   // Modals state
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
   const [isSampleGalleryOpen, setIsSampleGalleryOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Toast notifications
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -197,6 +220,19 @@ export default function App() {
     }
   };
 
+  const handleSaveSettings = (newSettings: UserSettings) => {
+    setSettings(newSettings);
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+    } catch (e) {
+      console.warn('Failed saving settings to localStorage', e);
+    }
+    addToast(
+      `Model settings updated (${newSettings.model})${newSettings.apiKey ? ' with custom API key' : ''}`,
+      'success'
+    );
+  };
+
   const handleExtractPrompt = async () => {
     if (!currentImageData) {
       addToast('Please upload or select an image first', 'error');
@@ -212,11 +248,19 @@ export default function App() {
       const optimized = await resizeImageToTargetSize(currentImageData, 1024 * 1024);
       setLoadingStep(`Deconstructing with Gemini Vision (${formatBytes(optimized.sizeBytes)})...`);
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (settings.apiKey) {
+        headers['x-gemini-api-key'] = settings.apiKey;
+      }
+      if (settings.model) {
+        headers['x-gemini-model'] = settings.model;
+      }
+
       const response = await fetch('/api/extract-prompt', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           image: optimized.dataUrl,
           mimeType: optimized.mimeType,
@@ -224,6 +268,8 @@ export default function App() {
           customFocus: activeMode === 'custom' ? customFocusQuery : '',
           aspects: selectedAspects,
           injectedSubject: injectedSubject.trim(),
+          apiKey: settings.apiKey,
+          model: settings.model || 'gemini-3.5-flash-lite',
         }),
       });
 
@@ -304,6 +350,8 @@ export default function App() {
         hasActiveImage={!!currentImageData || !!result}
         onOpenSampleGallery={() => setIsSampleGalleryOpen(true)}
         onOpenSuggestions={() => setIsSuggestionsOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        isCustomSettingsActive={!!settings.apiKey || settings.model !== 'gemini-3.5-flash-lite'}
       />
 
       {/* Main Container */}
@@ -392,6 +440,7 @@ export default function App() {
               result={result}
               onCopyText={handleCopyText}
               activeFocus={activeMode}
+              userSettings={settings}
             />
 
             {/* Collapsible Forensic Visual Deconstruction Breakdown */}
@@ -406,9 +455,15 @@ export default function App() {
           <div className="flex items-center gap-1.5">
             <span className="font-medium text-neutral-400">ReversePrompt.ai</span>
             <span>·</span>
-            <span>Multimodal Gemini 3.8 Vision</span>
+            <span>Multimodal Vision ({settings.model})</span>
           </div>
           <div className="flex items-center gap-3 text-neutral-400">
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="hover:text-amber-400 transition-colors"
+            >
+              Settings
+            </button>
             <button
               onClick={() => setIsSuggestionsOpen(true)}
               className="hover:text-amber-400 transition-colors"
@@ -453,6 +508,13 @@ export default function App() {
         onClose={() => setIsSampleGalleryOpen(false)}
         onSelectPreset={handleSelectSamplePreset}
         isLoading={isLoading}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSave={handleSaveSettings}
       />
 
       {/* Toast notifications */}
